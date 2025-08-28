@@ -1,0 +1,187 @@
+{
+    "function": "bin.tune.main",
+    "gpus": [
+        "NVIDIA A100-SXM4-80GB"
+    ],
+    "config": {
+        "seed": 0,
+        "function": "bin.lightgbm_.main",
+        "n_trials": 100,
+        "sampler_type": "TPESampler",
+        "sampler": {
+            "n_startup_trials": 20
+        },
+        "space": {
+            "seed": 0,
+            "data": {
+                "cache": false,
+                "path": "data/artnet-views",
+                "setting": "transductive",
+                "add_self_loops": false,
+                "num_policy": "none",
+                "ratio_policy": "none",
+                "cat_policy": "ordinal",
+                "internal_split_name": "RL",
+                "graph_encodings": {
+                    "preprocess": "noisy-quantile-normal",
+                    "lap_pe": {
+                        "k": 14
+                    },
+                    "degree": {
+                        "log": true
+                    },
+                    "pagerank": {
+                        "log": true
+                    }
+                },
+                "nfa": {}
+            },
+            "model": {
+                "n_estimators": 4000,
+                "n_jobs": 4,
+                "verbose": -1,
+                "feature_fraction": [
+                    "_tune_",
+                    "uniform",
+                    0.5,
+                    1.0
+                ],
+                "lambda_l2": [
+                    "_tune_",
+                    "?loguniform",
+                    0.0,
+                    0.1,
+                    10.0
+                ],
+                "learning_rate": [
+                    "_tune_",
+                    "loguniform",
+                    0.001,
+                    1.0
+                ],
+                "num_leaves": [
+                    "_tune_",
+                    "int",
+                    4,
+                    768
+                ],
+                "min_sum_hessian_in_leaf": [
+                    "_tune_",
+                    "loguniform",
+                    0.0001,
+                    100.0
+                ],
+                "bagging_fraction": [
+                    "_tune_",
+                    "uniform",
+                    0.5,
+                    1.0
+                ],
+                "stopping_rounds": 1000,
+                "device_type": "cpu"
+            },
+            "fit": {},
+            "pearl": {
+                "batch_size": 8,
+                "output_dim": 16,
+                "backbone": {
+                    "type": "BaseGraphBackbone",
+                    "conv_name": "gcn",
+                    "norm_name": "none",
+                    "residual": false,
+                    "n_layers": 3,
+                    "d_hidden": 512,
+                    "dropout": 0.1,
+                    "activation": "gelu"
+                }
+            }
+        }
+    },
+    "best": {
+        "function": "bin.lightgbm_.main",
+        "gpus": [
+            "NVIDIA A100-SXM4-80GB"
+        ],
+        "config": {
+            "seed": 0,
+            "data": {
+                "cache": false,
+                "path": "data/artnet-views",
+                "setting": "transductive",
+                "add_self_loops": false,
+                "num_policy": "none",
+                "ratio_policy": "none",
+                "cat_policy": "ordinal",
+                "internal_split_name": "RL",
+                "graph_encodings": {
+                    "preprocess": "noisy-quantile-normal",
+                    "lap_pe": {
+                        "k": 14
+                    },
+                    "degree": {
+                        "log": true
+                    },
+                    "pagerank": {
+                        "log": true
+                    }
+                },
+                "nfa": {}
+            },
+            "model": {
+                "n_estimators": 4000,
+                "n_jobs": 4,
+                "verbose": -1,
+                "feature_fraction": 0.5000684300223074,
+                "lambda_l2": 3.4952691697999243,
+                "learning_rate": 0.0018312022956418616,
+                "num_leaves": 701,
+                "min_sum_hessian_in_leaf": 0.3117596380235216,
+                "bagging_fraction": 0.9764895487315431,
+                "stopping_rounds": 1000,
+                "device_type": "cpu"
+            },
+            "fit": {},
+            "pearl": {
+                "batch_size": 8,
+                "output_dim": 16,
+                "backbone": {
+                    "type": "BaseGraphBackbone",
+                    "conv_name": "gcn",
+                    "norm_name": "none",
+                    "residual": false,
+                    "n_layers": 3,
+                    "d_hidden": 512,
+                    "dropout": 0.1,
+                    "activation": "gelu"
+                }
+            }
+        },
+        "prediction_type": "labels",
+        "time": "0:00:48.343171",
+        "best_iteration": 0,
+        "metrics": {
+            "train": {
+                "rmse": 0.20645511836377106,
+                "mae": 0.15097356418345909,
+                "r2": 0.9855022083880689,
+                "score": 0.9855022083880689
+            },
+            "val": {
+                "rmse": 1.1100648339871897,
+                "mae": 0.8794509622279343,
+                "r2": 0.5778728284625858,
+                "score": 0.5778728284625858
+            },
+            "test": {
+                "rmse": 1.1120356104198825,
+                "mae": 0.8773634024545583,
+                "r2": 0.5755766228884474,
+                "score": 0.5755766228884474
+            }
+        },
+        "trial_id": 94,
+        "tuning_time": "2:30:53.109218"
+    },
+    "time": 9507.439857847989,
+    "n_completed_trials": 100
+}

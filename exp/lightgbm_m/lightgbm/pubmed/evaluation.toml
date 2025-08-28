@@ -1,0 +1,59 @@
+function = "bin.lightgbm_.main"
+n_seeds = 10
+
+[base_config.data]
+cache = false
+path = "data/pubmed"
+setting = "transductive"
+add_self_loops = false
+num_policy = "none"
+external_split = true
+
+[base_config.data.graph_encodings]
+preprocess = "noisy-quantile-normal"
+
+[base_config.data.graph_encodings.lap_pe]
+k = 14
+
+[base_config.data.graph_encodings.degree]
+log = true
+
+[base_config.data.graph_encodings.pagerank]
+log = true
+
+[base_config.data.nfa]
+num_modes = [
+    "mean",
+]
+
+[base_config.data.pca.params]
+dim = 1000000
+
+[base_config.model]
+n_estimators = 4000
+n_jobs = 4
+verbose = -1
+feature_fraction = 0.9393390239260586
+lambda_l2 = 6.731006724065745
+learning_rate = 0.00669437982570929
+num_leaves = 426
+min_sum_hessian_in_leaf = 0.0003633046514258136
+bagging_fraction = 0.7381455727754528
+stopping_rounds = 1000
+device_type = "cpu"
+
+[base_config.fit]
+
+[base_config.pearl]
+batch_size = 8
+output_dim = 16
+
+[base_config.pearl.backbone]
+type = "BaseGraphBackbone"
+conv_name = "gcn"
+norm_name = "none"
+residual = false
+n_layers = 3
+d_hidden = 512
+dropout = 0.1
+activation = "gelu"

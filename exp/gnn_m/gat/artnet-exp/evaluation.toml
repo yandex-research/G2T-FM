@@ -1,0 +1,59 @@
+function = "bin.base.main"
+n_seeds = 10
+
+[base_config]
+n_steps = 1000
+patience = 100
+
+[base_config.data]
+cache = false
+path = "data/artnet-exp"
+setting = "transductive"
+add_self_loops = true
+num_policy = "noisy-quantile-normal"
+ratio_policy = "none"
+cat_policy = "one-hot"
+internal_split_name = "RL"
+
+[base_config.data.graph_encodings]
+preprocess = "noisy-quantile-normal"
+
+[base_config.data.graph_encodings.lap_pe]
+k = 14
+
+[base_config.data.graph_encodings.degree]
+log = true
+
+[base_config.data.graph_encodings.pagerank]
+log = true
+
+[base_config.data.nfa]
+
+[base_config.model.backbone]
+type = "BaseGraphBackbone"
+conv_name = "gat"
+norm_name = "layer"
+residual = true
+n_layers = 3
+d_hidden = 512
+dropout = 0.1
+activation = "gelu"
+
+[base_config.model.pearl]
+batch_size = 8
+output_dim = 16
+
+[base_config.model.pearl.backbone]
+type = "BaseGraphBackbone"
+conv_name = "gcn"
+norm_name = "none"
+residual = false
+n_layers = 3
+d_hidden = 512
+dropout = 0.1
+activation = "gelu"
+
+[base_config.optimizer]
+type = "AdamW"
+lr = 3e-05
+weight_decay = 0.0

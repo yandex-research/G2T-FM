@@ -1,0 +1,55 @@
+function = "bin.lightgbm_.main"
+n_seeds = 10
+
+[base_config.data]
+cache = false
+path = "data/artnet-exp"
+setting = "transductive"
+add_self_loops = false
+num_policy = "none"
+ratio_policy = "none"
+cat_policy = "ordinal"
+internal_split_name = "RL"
+
+[base_config.data.graph_encodings]
+preprocess = "noisy-quantile-normal"
+
+[base_config.data.graph_encodings.lap_pe]
+k = 14
+
+[base_config.data.graph_encodings.degree]
+log = true
+
+[base_config.data.graph_encodings.pagerank]
+log = true
+
+[base_config.data.nfa]
+
+[base_config.model]
+n_estimators = 4000
+n_jobs = 4
+verbose = -1
+feature_fraction = 0.5670124161152281
+lambda_l2 = 0.3590179974031893
+learning_rate = 0.009171232487898966
+num_leaves = 605
+min_sum_hessian_in_leaf = 0.07101871420299936
+bagging_fraction = 0.5799359627647237
+stopping_rounds = 1000
+device_type = "cpu"
+
+[base_config.fit]
+
+[base_config.pearl]
+batch_size = 8
+output_dim = 16
+
+[base_config.pearl.backbone]
+type = "BaseGraphBackbone"
+conv_name = "gcn"
+norm_name = "none"
+residual = false
+n_layers = 3
+d_hidden = 512
+dropout = 0.1
+activation = "gelu"
