@@ -1,3 +1,3 @@
-from . import graph, data, deep, env, metrics, util
+from . import graph, data, deep, env, metrics, util, tfm
 
 from .util import *  # noqa: F403
