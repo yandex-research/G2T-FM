@@ -50,3 +50,11 @@ After training, results are saved in the same directory as the configuration fil
 - `report.json` - Evaluation metrics
 - Model checkpoints
 - Training logs
+
+## Licenses
+
+This project includes third-party components (TabPFN and LimiX) under separate licenses. See LICENSES/ and NOTICE for details.
+
+***
+
+Built with PriorLabs-TabPFN
