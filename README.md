@@ -1,6 +1,6 @@
 # Turning Tabular Foundation Models into Graph Foundation Models
 
-This is the official repository for the paper "Turning Tabular Foundation Models into Graph Foundation Models". In this repository, we provide code for reproducing our experiments with G2T-FM, GNNs and LightGBM (including ablation). Code for reproduction of our experiments with prior GFMs is coming soon.
+This is the official repository for the paper "Turning Tabular Foundation Models into Graph Foundation Models" ([arXiv](https://arxiv.org/abs/2508.20906)). In this repository, we provide code for reproducing our experiments with G2T-FM, GNNs and LightGBM (including ablation). Code for reproduction of our experiments with prior GFMs is coming soon.
 
 > [!NOTE]
 > Our work is largely based on [TabPFN](https://github.com/PriorLabs/TabPFN), [LimiX](https://github.com/limix-ldm/LimiX) and ["On Finetuning Tabular Foundation Models" paper](https://github.com/yandex-research/tabpfn-finetuning/tree/main), please consider checking them out too!
