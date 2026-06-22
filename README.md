@@ -1,9 +1,9 @@
 # Turning Tabular Foundation Models into Graph Foundation Models
 
-This is the official repository for the paper "Turning Tabular Foundation Models into Graph Foundation Models" ([arXiv](https://arxiv.org/abs/2508.20906)). In this repository, we provide code for reproducing our experiments with G2T-FM, GNNs and LightGBM (including ablation). Code for reproduction of our experiments with prior GFMs is coming soon.
+This is the official repository for the paper "Turning Tabular Foundation Models into Graph Foundation Models" ([arXiv](https://arxiv.org/abs/2508.20906)). In this repository, we provide code for reproducing our key experiments. 
 
 > [!NOTE]
-> Our work is largely based on [TabPFN](https://github.com/PriorLabs/TabPFN), [LimiX](https://github.com/limix-ldm/LimiX) and ["On Finetuning Tabular Foundation Models" paper](https://github.com/yandex-research/tabpfn-finetuning/tree/main), please consider checking them out too!
+> See also: [GraphPFN](https://github.com/yandex-research/graphpfn), our next step toward applying TFMs and PFNs to graph node-level tasks. GraphPFN augments the LimiX tabular foundation model with graph adapters and is pretrained on millions of synthetic datasets, achieving state-of-the-art results.
 
 ## Reproducing Experiments
 
@@ -23,18 +23,18 @@ wget https://huggingface.co/Prior-Labs/TabPFN-v2-clf/resolve/main/tabpfn-v2-clas
 
 **Running the code**
 
-You can execute a minimal run with a following command:
+You can execute a minimal run (G2T-LimiX finetuning with 10 ensemble members) with the following command:
 
 ```
-uv run bin/go.py exp/g2t_tabpfnv2/finetune/tolokers-2/tuning.toml --force
+uv run bin/go.py exp/g2t/main/limix/finetune/10/tolokers-2/tuning.toml --force
 ```
 
 ## Project Structure
 
 - `bin/` - Training and evaluation scripts
 - `exp/` - Experiment configurations and results
-- `data/` - Dataset directory (created after download)
 - `lib/` - Common utilities and tools
+- `vendor/` – Vendored third-party code with minor import modifications for compatibility
 
 ## Configuration
 
@@ -53,7 +53,7 @@ After training, results are saved in the same directory as the configuration fil
 
 ## Licenses
 
-This project includes third-party components (TabPFN and LimiX) under separate licenses. See LICENSES/ and NOTICE for details.
+This project uses third-party components [LimiX](https://github.com/limix-ldm/LimiX), [TabICL](https://github.com/soda-inria/tabicl) and [TabPFN](https://github.com/PriorLabs/TabPFN). See the `NOTICE` file and `LICENSES/` directory for details.
 
 ***
 

@@ -8,7 +8,7 @@ from sklearn.exceptions import UndefinedMetricWarning
 
 from .util import PredictionType, TaskType
 
-warnings.filterwarnings(action='ignore', category=UndefinedMetricWarning)
+warnings.filterwarnings(action="ignore", category=UndefinedMetricWarning)
 
 
 def _get_labels_and_probs(
@@ -30,7 +30,7 @@ def _get_labels_and_probs(
             else scipy.special.softmax(prediction, axis=1)
         )
     else:
-        raise ValueError(f'Unknown prediction type: {prediction_type}')
+        raise ValueError(f"Unknown prediction type: {prediction_type}")
 
     assert probs is not None
     labels = np.round(probs) if task_type == TaskType.BINCLASS else probs.argmax(axis=1)
@@ -49,9 +49,9 @@ def calculate_metrics(
     if task_type == TaskType.REGRESSION:
         assert prediction_type == PredictionType.LABELS
         result = {
-            'rmse': float(sklearn.metrics.mean_squared_error(y_true, y_pred) ** 0.5),
-            'mae': float(sklearn.metrics.mean_absolute_error(y_true, y_pred)),
-            'r2': float(sklearn.metrics.r2_score(y_true, y_pred)),
+            "rmse": float(sklearn.metrics.mean_squared_error(y_true, y_pred) ** 0.5),
+            "mae": float(sklearn.metrics.mean_absolute_error(y_true, y_pred)),
+            "r2": float(sklearn.metrics.r2_score(y_true, y_pred)),
         }
 
     else:
@@ -62,9 +62,9 @@ def calculate_metrics(
             sklearn.metrics.classification_report(y_true, labels, output_dict=True),
         )
         if probs is not None:
-            result['cross-entropy'] = float(sklearn.metrics.log_loss(y_true, probs))
+            result["cross-entropy"] = float(sklearn.metrics.log_loss(y_true, probs))
         if task_type == TaskType.BINCLASS and probs is not None:
-            result['roc-auc'] = float(sklearn.metrics.roc_auc_score(y_true, probs))
-            result['ap'] = float(sklearn.metrics.average_precision_score(y_true, probs))
+            result["roc-auc"] = float(sklearn.metrics.roc_auc_score(y_true, probs))
+            result["ap"] = float(sklearn.metrics.average_precision_score(y_true, probs))
 
     return result

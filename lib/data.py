@@ -35,11 +35,11 @@ class Task:
     score: Score
 
     @classmethod
-    def from_dir(cls, path: str | Path) -> 'Task':
+    def from_dir(cls, path: str | Path) -> "Task":
         path = Path(path).resolve()
-        info = json.loads(path.joinpath('info.json').read_text())
-        task_type = TaskType(info['task_type'])
-        score = info.get('score')
+        info = json.loads(path.joinpath("info.json").read_text())
+        task_type = TaskType(info["task_type"])
+        score = info.get("score")
         if score is None:
             score = {
                 TaskType.BINCLASS: Score.AP,
@@ -50,8 +50,8 @@ class Task:
             score = Score(score)
         return Task(
             {
-                part: np.load(path / f'Y_{part}.npy')
-                for part in ['train', 'val', 'test']
+                part: np.load(path / f"Y_{part}.npy")
+                for part in ["train", "val", "test"]
             },
             task_type,
             score,
@@ -62,11 +62,11 @@ class Task:
         assert isinstance(self.score, Score)
         if self.is_regression:
             assert all(
-                value.dtype in (np.dtype('float32'), np.dtype('float64'))
+                value.dtype in (np.dtype("float32"), np.dtype("float64"))
                 for value in self.labels.values()
-            ), 'Regression labels must have dtype=float32'
+            ), "Regression labels must have dtype=float32"
             for key in self.labels:
-                self.labels[key] = self.labels[key].astype('float32')
+                self.labels[key] = self.labels[key].astype("float32")
 
     @property
     def is_regression(self) -> bool:
@@ -86,7 +86,7 @@ class Task:
 
     def compute_n_classes(self) -> int:
         assert self.is_binclass or self.is_classification
-        return len(np.unique(self.labels['train']))
+        return len(np.unique(self.labels["train"]))
 
     def try_compute_n_classes(self) -> None | int:
         return None if self.is_regression else self.compute_n_classes()
@@ -103,7 +103,7 @@ class Task:
             for part in predictions
         }
         for part_metrics in metrics.values():
-            part_metrics['score'] = (
+            part_metrics["score"] = (
                 1.0 if _SCORE_SHOULD_BE_MAXIMIZED[self.score] else -1.0
             ) * part_metrics[self.score.value]
         return metrics  # type: ignore
@@ -113,15 +113,15 @@ def load_data(path: str | Path) -> dict[DataKey, dict[PartKey, np.ndarray]]:
     path = Path(path).resolve()
     return {  # type: ignore
         key.lower(): {
-            part: np.load(path / f'{key}_{part}.npy', allow_pickle=True)
-            for part in ['train', 'val', 'test']
+            part: np.load(path / f"{key}_{part}.npy", allow_pickle=True)
+            for part in ["train", "val", "test"]
         }
-        for key in ['X_num', 'X_bin', 'X_cat', 'Y']
-        if path.joinpath(f'{key}_train.npy').exists()
+        for key in ["X_num", "X_bin", "X_cat", "Y"]
+        if path.joinpath(f"{key}_train.npy").exists()
     }
 
 
-T = TypeVar('T', np.ndarray, Tensor)
+T = TypeVar("T", np.ndarray, Tensor)
 
 
 @dataclass
@@ -135,7 +135,7 @@ class Dataset(Generic[T]):  # noqa: UP046
     task: Task
 
     @classmethod
-    def from_dir(cls, path: str | Path) -> 'Dataset[np.ndarray]':
+    def from_dir(cls, path: str | Path) -> "Dataset[np.ndarray]":
         return Dataset(load_data(path), Task.from_dir(path))
 
     def __post_init__(self):
@@ -145,21 +145,21 @@ class Dataset(Generic[T]):  # noqa: UP046
 
         # >>> Check data types.
         for key, allowed_dtypes in {
-            'x_num': [np.dtype('float32')] if is_numpy else [torch.float32],
-            'x_bin': [np.dtype('float32')] if is_numpy else [torch.float32],
-            'x_cat': [] if is_numpy else [torch.int64],
-            'y': (
-                [np.dtype('float32'), np.dtype('float64'), np.dtype('int64')]
+            "x_num": [np.dtype("float32")] if is_numpy else [torch.float32],
+            "x_bin": [np.dtype("float32")] if is_numpy else [torch.float32],
+            "x_cat": [] if is_numpy else [torch.int64],
+            "y": (
+                [np.dtype("float32"), np.dtype("float64"), np.dtype("int64")]
                 if is_numpy
                 else [torch.float32, torch.int64]
             ),
         }.items():
             if key in data:
                 for part, value in data[key].items():
-                    if key == 'x_cat' and is_numpy:
+                    if key == "x_cat" and is_numpy:
                         assert value.dtype in (
-                            np.dtype('int32'),
-                            np.dtype('int64'),
+                            np.dtype("int32"),
+                            np.dtype("int64"),
                         ) or isinstance(
                             value.dtype,
                             np.dtypes.StrDType,  # type: ignore
@@ -167,34 +167,34 @@ class Dataset(Generic[T]):  # noqa: UP046
                     else:
                         assert value.dtype in allowed_dtypes, (
                             f'The value data["{key}"]["{part}"] has dtype'
-                            f' {value.dtype}, but it must be one of {allowed_dtypes}'
+                            f" {value.dtype}, but it must be one of {allowed_dtypes}"
                         )
 
         # >>> Fix data types.
         if self.task.is_regression:
-            for key in data['y']:
-                data['y'][key] = (  # type: ignore
-                    data['y'][key].astype('float32')  # type: ignore
+            for key in data["y"]:
+                data["y"][key] = (  # type: ignore
+                    data["y"][key].astype("float32")  # type: ignore
                     if self._is_numpy()
-                    else data['y'][key].to(torch.float32)  # type: ignore
+                    else data["y"][key].to(torch.float32)  # type: ignore
                 )
-        if 'x_cat' in data and data['x_cat']['train'].dtype == np.dtype('int32'):
-            for key in data['x_cat']:
-                data['x_cat'][key] = data['x_cat'][key].astype('int64')  # type: ignore
+        if "x_cat" in data and data["x_cat"]["train"].dtype == np.dtype("int32"):
+            for key in data["x_cat"]:
+                data["x_cat"][key] = data["x_cat"][key].astype("int64")  # type: ignore
 
         # >>> Check nans.
         isnan = np.isnan if is_numpy else torch.isnan
-        for key in ['x_num', 'x_bin']:
+        for key in ["x_num", "x_bin"]:
             if key in data:  # type: ignore
                 for part, value in data[key].items():
                     assert not isnan(
                         value  # type: ignore
                     ).any(), f'data["{key}"]["{part}"] contains nans'
-        for part, value in data['y'].items():
+        for part, value in data["y"].items():
             assert not isnan(value).any(), f'data["{key}"]["{part}"] contains nans'  # type: ignore
 
     def _is_numpy(self) -> bool:
-        return isinstance(self.data['y']['train'], np.ndarray)
+        return isinstance(self.data["y"]["train"], np.ndarray)
 
     def __contains__(self, key: DataKey) -> bool:
         return key in self.data
@@ -207,15 +207,15 @@ class Dataset(Generic[T]):  # noqa: UP046
 
     @property
     def n_num_features(self) -> int:
-        return self.data['x_num']['train'].shape[1] if 'x_num' in self.data else 0
+        return self.data["x_num"]["train"].shape[1] if "x_num" in self.data else 0
 
     @property
     def n_bin_features(self) -> int:
-        return self.data['x_bin']['train'].shape[1] if 'x_bin' in self.data else 0
+        return self.data["x_bin"]["train"].shape[1] if "x_bin" in self.data else 0
 
     @property
     def n_cat_features(self) -> int:
-        return self.data['x_cat']['train'].shape[1] if 'x_cat' in self.data else 0
+        return self.data["x_cat"]["train"].shape[1] if "x_cat" in self.data else 0
 
     @property
     def n_features(self) -> int:
@@ -223,26 +223,26 @@ class Dataset(Generic[T]):  # noqa: UP046
 
     def size(self, part: None | PartKey) -> int:
         return (
-            sum(map(len, self.data['y'].values()))
+            sum(map(len, self.data["y"].values()))
             if part is None
-            else len(self.data['y'][part])
+            else len(self.data["y"][part])
         )
 
     def parts(self) -> Iterable[PartKey]:
-        return self.data['y'].keys()
+        return self.data["y"].keys()
 
     def compute_cat_cardinalities(self) -> list[int]:
-        x_cat = self.data.get('x_cat')
+        x_cat = self.data.get("x_cat")
         if x_cat is None:
             return []
         unique = np.unique if self._is_numpy() else torch.unique
         return (
             []
             if x_cat is None
-            else [len(unique(column)) for column in x_cat['train'].T]
+            else [len(unique(column)) for column in x_cat["train"].T]
         )
 
-    def to_torch(self, device: None | str | torch.device) -> 'Dataset[Tensor]':
+    def to_torch(self, device: None | str | torch.device) -> "Dataset[Tensor]":
         return Dataset(
             {
                 key: {
@@ -256,8 +256,8 @@ class Dataset(Generic[T]):  # noqa: UP046
 
 
 class NumPolicy(enum.Enum):
-    STANDARD = 'standard'
-    NOISY_QUANTILE = 'noisy-quantile'
+    STANDARD = "standard"
+    NOISY_QUANTILE = "noisy-quantile"
 
 
 def transform_num(
@@ -265,13 +265,13 @@ def transform_num(
 ) -> dict[PartKey, np.ndarray]:
     if policy is not None:
         policy = NumPolicy(policy)
-        X_num_train = X_num['train']
+        X_num_train = X_num["train"]
         if policy == NumPolicy.STANDARD:
             normalizer = sklearn.preprocessing.StandardScaler()
         elif policy == NumPolicy.NOISY_QUANTILE:
             normalizer = sklearn.preprocessing.QuantileTransformer(
-                n_quantiles=max(min(X_num['train'].shape[0] // 30, 1000), 10),
-                output_distribution='normal',
+                n_quantiles=max(min(X_num["train"].shape[0] // 30, 1000), 10),
+                output_distribution="normal",
                 subsample=1_000_000_000,
                 random_state=seed,
             )
@@ -280,7 +280,7 @@ def transform_num(
                 0.0, 1e-5, X_num_train.shape
             ).astype(X_num_train.dtype)
         else:
-            raise ValueError(f'Unknown policy={policy}')
+            raise ValueError(f"Unknown policy={policy}")
 
         normalizer.fit(X_num_train)
         X_num = {k: normalizer.transform(v) for k, v in X_num.items()}  # type: ignore
@@ -293,7 +293,7 @@ def transform_num(
     X_num = {k: np.nan_to_num(v) for k, v in X_num.items()}
 
     # Remove columns with one constant value.
-    mask = np.array([len(np.unique(x)) > 1 for x in X_num['train'].T])
+    mask = np.array([len(np.unique(x)) > 1 for x in X_num["train"].T])
     X_num = {k: v[:, mask] for k, v in X_num.items()}
 
     X_num = {k: v.astype(np.float32) for k, v in X_num.items()}
@@ -301,8 +301,8 @@ def transform_num(
 
 
 class CatPolicy(enum.Enum):
-    ORDINAL = 'ordinal'
-    ONE_HOT = 'one-hot'
+    ORDINAL = "ordinal"
+    ONE_HOT = "one-hot"
 
 
 def transform_cat(
@@ -315,15 +315,15 @@ def transform_cat(
 
     # The first step is always the ordinal encoding,
     # even for the one-hot encoding.
-    unknown_value = np.iinfo('int64').max - 3
+    unknown_value = np.iinfo("int64").max - 3
     encoder = sklearn.preprocessing.OrdinalEncoder(
-        handle_unknown='use_encoded_value',  # type: ignore
+        handle_unknown="use_encoded_value",  # type: ignore
         unknown_value=unknown_value,  # type: ignore
-        dtype='int64',  # type: ignore
-    ).fit(X_cat['train'])
+        dtype="int64",  # type: ignore
+    ).fit(X_cat["train"])
     X_cat = {k: encoder.transform(v) for k, v in X_cat.items()}
-    max_values = X_cat['train'].max(axis=0)
-    for part in ['val', 'test']:
+    max_values = X_cat["train"].max(axis=0)
+    for part in ["val", "test"]:
         part = cast(PartKey, part)
         for column_idx in range(X_cat[part].shape[1]):
             X_cat[part][X_cat[part][:, column_idx] == unknown_value, column_idx] = (
@@ -334,14 +334,14 @@ def transform_cat(
         return X_cat
     elif policy == CatPolicy.ONE_HOT:
         encoder = sklearn.preprocessing.OneHotEncoder(
-            handle_unknown='ignore',
+            handle_unknown="ignore",
             sparse=False,
             dtype=np.float32,  # type: ignore
         )
-        encoder.fit(X_cat['train'])
+        encoder.fit(X_cat["train"])
         return {k: cast(np.ndarray, encoder.transform(v)) for k, v in X_cat.items()}
     else:
-        raise ValueError(f'Unknown policy={policy}')
+        raise ValueError(f"Unknown policy={policy}")
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -351,15 +351,12 @@ class RegressionLabelStats:
 
 
 def standardize_labels(
-    y: np.ndarray,
-    masks: dict[PartKey, np.ndarray]
+    y: np.ndarray, masks: dict[PartKey, np.ndarray]
 ) -> tuple[np.ndarray, RegressionLabelStats]:
-    assert y.dtype == np.dtype('float32')
-    mean = float(y[masks['train']].mean())
-    std = float(y[masks['train']].std())
-    return (y - mean) / std, RegressionLabelStats(
-        mean=mean, std=std
-    )
+    assert y.dtype == np.dtype("float32")
+    mean = float(y[masks["train"]].mean())
+    std = float(y[masks["train"]].std())
+    return (y - mean) / std, RegressionLabelStats(mean=mean, std=std)
 
 
 def build_dataset(
@@ -373,25 +370,25 @@ def build_dataset(
     path = Path(path).resolve()
     if cache:
         args = locals()
-        args.pop('cache')
-        args.pop('path')
+        args.pop("cache")
+        args.pop("path")
         cache_path = env.get_cache_dir() / (
-            f'build_dataset__{path.name}__{hashlib.md5(str(args).encode("utf-8")).hexdigest()}.pickle'
+            f"build_dataset__{path.name}__{hashlib.md5(str(args).encode('utf-8')).hexdigest()}.pickle"
         )
         if cache_path.exists():
             cached_args, cached_value = pickle.loads(cache_path.read_bytes())
-            assert args == cached_args, f'Hash collision for {cache_path}'
-            logger.info(f'Using cached dataset: {cache_path.name}')
+            assert args == cached_args, f"Hash collision for {cache_path}"
+            logger.info(f"Using cached dataset: {cache_path.name}")
             return cached_value
     else:
         args = None
         cache_path = None
 
     dataset = Dataset.from_dir(path)
-    if 'x_num' in dataset.data:
-        dataset['x_num'] = transform_num(dataset['x_num'], num_policy, seed)
-    if 'x_cat' in dataset.data:
-        dataset['x_cat'] = transform_cat(dataset['x_cat'], cat_policy)
+    if "x_num" in dataset.data:
+        dataset["x_num"] = transform_num(dataset["x_num"], num_policy, seed)
+    if "x_cat" in dataset.data:
+        dataset["x_cat"] = transform_cat(dataset["x_cat"], cat_policy)
 
     if cache_path is not None:
         cache_path.write_bytes(pickle.dumps((args, dataset)))

@@ -20,8 +20,8 @@ def get_activation_module(activation: str) -> nn.Module:
 class ResidualModule(nn.Module):
     def __init__(
         self,
-        base_class: nn.Module,
-        norm_class: nn.Module,
+        base_class: type[nn.Module],
+        norm_class: type[nn.Module],
         d_hidden: int,
         *,
         residual: bool = True,
@@ -42,7 +42,9 @@ class ResidualModule(nn.Module):
 
 
 class MLPModule(nn.Module):
-    def __init__(self, d: int, dropout: float = 0.0, activation: str = "relu", **kwargs):
+    def __init__(
+        self, d: int, dropout: float = 0.0, activation: str = "relu", **kwargs
+    ):
         super().__init__()
         self.layers = nn.Sequential(
             nn.Linear(d, d),
@@ -58,7 +60,14 @@ class MLPModule(nn.Module):
 
 
 class FFNModule(nn.Module):
-    def __init__(self, d: int, n_inputs: int = 1, dropout: float = 0.0, activation: str = "relu", **kwargs):
+    def __init__(
+        self,
+        d: int,
+        n_inputs: int = 1,
+        dropout: float = 0.0,
+        activation: str = "relu",
+        **kwargs,
+    ):
         super().__init__()
         self.layers = nn.Sequential(
             nn.Linear(d * n_inputs, d),
@@ -76,7 +85,9 @@ class FFNModule(nn.Module):
 
 
 class GCNModule(nn.Module):
-    def __init__(self, d: int, dropout: float = 0.0, activation: str = "relu", **kwargs):
+    def __init__(
+        self, d: int, dropout: float = 0.0, activation: str = "relu", **kwargs
+    ):
         super().__init__()
         self.ffn = FFNModule(d, dropout=dropout, activation=activation)
 
@@ -96,7 +107,9 @@ class GCNModule(nn.Module):
 
 
 class GCNSepModule(nn.Module):
-    def __init__(self, d: int, dropout: float = 0.0, activation: str = "relu", **kwargs):
+    def __init__(
+        self, d: int, dropout: float = 0.0, activation: str = "relu", **kwargs
+    ):
         super().__init__()
         self.ffn = FFNModule(d, n_inputs=2, dropout=dropout, activation=activation)
 
@@ -117,7 +130,9 @@ class GCNSepModule(nn.Module):
 
 
 class GraphSAGEModule(nn.Module):
-    def __init__(self, d: int, dropout: float = 0.0, activation: str = "relu", **kwargs):
+    def __init__(
+        self, d: int, dropout: float = 0.0, activation: str = "relu", **kwargs
+    ):
         super().__init__()
         self.ffn = FFNModule(d, n_inputs=2, dropout=dropout, activation=activation)
 
@@ -136,11 +151,18 @@ class GraphSAGEModule(nn.Module):
 
 def _check_d_and_n_heads_consistency(d: int, n_heads: int) -> None:
     if d % n_heads != 0:
-        raise ValueError('Dimension mismatch: d should be a multiple of n_head.')
+        raise ValueError("Dimension mismatch: d should be a multiple of n_head.")
 
 
 class GATModule(nn.Module):
-    def __init__(self, d: int, n_heads: int = 4, dropout: float = 0.0, activation: str = "relu", **kwargs):
+    def __init__(
+        self,
+        d: int,
+        n_heads: int = 4,
+        dropout: float = 0.0,
+        activation: str = "relu",
+        **kwargs,
+    ):
         super().__init__()
 
         _check_d_and_n_heads_consistency(d, n_heads)
@@ -157,7 +179,7 @@ class GATModule(nn.Module):
     def forward(
         self, graph: dgl.DGLGraph, x: Tensor, edge_weights: None | Tensor = None
     ) -> Tensor:
-        assert edge_weights is None, 'So far, we can not apply edge weights.'
+        assert edge_weights is None, "So far, we can not apply edge weights."
 
         x = self.input_linear(x)
 
@@ -175,7 +197,14 @@ class GATModule(nn.Module):
 
 
 class GATSepModule(nn.Module):
-    def __init__(self, d: int, n_heads: int = 4, dropout: float = 0.0, activation: str = "relu", **kwargs):
+    def __init__(
+        self,
+        d: int,
+        n_heads: int = 4,
+        dropout: float = 0.0,
+        activation: str = "relu",
+        **kwargs,
+    ):
         super().__init__()
 
         _check_d_and_n_heads_consistency(d, n_heads)
@@ -192,7 +221,7 @@ class GATSepModule(nn.Module):
     def forward(
         self, graph: dgl.DGLGraph, x: Tensor, edge_weights: None | Tensor = None
     ) -> Tensor:
-        assert edge_weights is None, 'So far, we can not apply edge weights.'
+        assert edge_weights is None, "So far, we can not apply edge weights."
 
         x = self.input_linear(x)
 
@@ -228,7 +257,7 @@ class TransformerAttentionModule(nn.Module):
     def forward(
         self, graph: dgl.DGLGraph, x: Tensor, edge_weights: None | Tensor = None
     ) -> Tensor:
-        assert edge_weights is None, 'So far, we can not apply edge weights.'
+        assert edge_weights is None, "So far, we can not apply edge weights."
 
         qkv: Tensor = self.attn_qkv_linear(x)
         qkv = qkv.reshape(-1, self.n_heads, self.d_head * 3)
@@ -246,7 +275,14 @@ class TransformerAttentionModule(nn.Module):
 
 
 class TransformerAttentionSepModule(nn.Module):
-    def __init__(self, d: int, n_heads: int = 4, dropout: float = 0.0, activation: str = "relu", **kwargs):
+    def __init__(
+        self,
+        d: int,
+        n_heads: int = 4,
+        dropout: float = 0.0,
+        activation: str = "relu",
+        **kwargs,
+    ):
         super().__init__()
 
         _check_d_and_n_heads_consistency(d, n_heads)
@@ -262,7 +298,7 @@ class TransformerAttentionSepModule(nn.Module):
     def forward(
         self, graph: dgl.DGLGraph, x: Tensor, edge_weights: None | Tensor = None
     ) -> Tensor:
-        assert edge_weights is None, 'So far, we can not apply edge weights.'
+        assert edge_weights is None, "So far, we can not apply edge weights."
 
         qkv: Tensor = self.attn_qkv_linear(x)
         qkv = qkv.reshape(-1, self.n_heads, self.d_head * 3)
@@ -281,21 +317,21 @@ class TransformerAttentionSepModule(nn.Module):
 
 
 CONVOLUTIONAL_MODULES = {
-    'mlp': [MLPModule],
-    'resnet': [FFNModule],
-    'sage': [GraphSAGEModule],
-    'gcn': [GCNModule],
-    'gcn-sep': [GCNSepModule],
-    'gat': [GATModule],
-    'gat-sep': [GATSepModule],
-    'gt': [TransformerAttentionModule, FFNModule],
-    'gt-sep': [TransformerAttentionSepModule, FFNModule],
+    "mlp": [MLPModule],
+    "resnet": [FFNModule],
+    "sage": [GraphSAGEModule],
+    "gcn": [GCNModule],
+    "gcn-sep": [GCNSepModule],
+    "gat": [GATModule],
+    "gat-sep": [GATSepModule],
+    "gt": [TransformerAttentionModule, FFNModule],
+    "gt-sep": [TransformerAttentionSepModule, FFNModule],
 }
 
 NORM_MODULES = {
-    'none': nn.Identity,
-    'layer': nn.LayerNorm,
-    'batch': nn.BatchNorm1d,
+    "none": nn.Identity,
+    "layer": nn.LayerNorm,
+    "batch": nn.BatchNorm1d,
 }
 
 
@@ -348,17 +384,17 @@ class BaseNumFeaturesModule(nn.Module):
     ):
         super().__init__()
 
-        if name == 'piecewise':
+        if name == "piecewise":
             assert bin_edges is not None
             self.module = E.PiecewiseLinearEmbeddings(
                 bins=bin_edges, **num_features_kwargs
             )
-        elif name == 'periodic':
+        elif name == "periodic":
             self.module = E.PeriodicEmbeddings(
                 n_features=n_features, **num_features_kwargs
             )
         else:
-            raise ValueError(f'Unknown {name=}')
+            raise ValueError(f"Unknown {name=}")
 
     def forward(self, x: Tensor) -> Tensor:
         return self.module(x).flatten(start_dim=1)

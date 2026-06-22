@@ -10,9 +10,10 @@ import rtdl_revisiting_models
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.utils.checkpoint
+from loguru import logger
 from torch import Tensor
 from torch.nn import Parameter
-
 
 from .util import TaskType, is_oom_exception
 
@@ -66,7 +67,7 @@ class PiecewiseLinearEmbeddings(nn.Module):
         d_embedding: int,
         *,
         activation: bool = False,
-        version: Literal[None, 'A', 'B'] = 'B',
+        version: Literal[None, "A", "B"] = "B",
         bias: bool = True,
     ) -> None:
         """
@@ -79,17 +80,19 @@ class PiecewiseLinearEmbeddings(nn.Module):
         """
         if d_embedding <= 0:
             raise ValueError(
-                f'd_embedding must be a positive integer, however: {d_embedding=}'
+                f"d_embedding must be a positive integer, however: {d_embedding=}"
             )
         rtdl_num_embeddings._check_bins(bins)
         super().__init__()
         n_features = len(bins)
         # NOTE[DIFF]
         # version="B" was introduced in a different paper (about the TabM model).
-        is_version_B = version == 'B'
+        is_version_B = version == "B"
 
         self.linear0 = (
-            LinearEmbeddings(n_features, d_embedding, bias=bias) if is_version_B else None
+            LinearEmbeddings(n_features, d_embedding, bias=bias)
+            if is_version_B
+            else None
         )
         self.impl = rtdl_num_embeddings._PiecewiseLinearEncodingImpl(bins)
         self.linear = rtdl_num_embeddings._NLinear(
@@ -110,7 +113,7 @@ class PiecewiseLinearEmbeddings(nn.Module):
         """Do the forward pass."""
         if x.ndim != 2:
             raise ValueError(
-                'For now, only inputs with exactly one batch dimension are supported.'
+                "For now, only inputs with exactly one batch dimension are supported."
             )
 
         x_linear = None if self.linear0 is None else self.linear0(x)
@@ -120,7 +123,6 @@ class PiecewiseLinearEmbeddings(nn.Module):
         if self.activation is not None:
             x_ple = self.activation(x_ple)
         return x_ple if x_linear is None else x_linear + x_ple
-
 
 
 class PiecewiseLinearEmbeddingsV3(nn.Module):
@@ -165,14 +167,14 @@ class PiecewiseLinearEmbeddingsV3(nn.Module):
         max_n_bins = max(n_bins)
         single_bin_mask = torch.tensor(n_bins) == 1
         self.register_buffer(
-            'single_bin_mask', single_bin_mask if single_bin_mask.any() else None
+            "single_bin_mask", single_bin_mask if single_bin_mask.any() else None
         )
 
         self.weight1 = nn.Parameter(torch.empty(n_features, d_embedding))
         self.bias1 = nn.Parameter(torch.empty(n_features, d_embedding))
         # Making weight2 and bias2 trainable can lead to *worse* performance.
-        self.register_buffer('weight2', torch.zeros(n_features, max_n_bins))
-        self.register_buffer('bias2', torch.zeros(n_features, max_n_bins))
+        self.register_buffer("weight2", torch.zeros(n_features, max_n_bins))
+        self.register_buffer("bias2", torch.zeros(n_features, max_n_bins))
         self.weight3 = nn.Parameter(torch.empty(n_features, max_n_bins, d_embedding))
 
         self.reset_parameters()
@@ -261,16 +263,16 @@ class _PiecewiseLinearEncodingV4(nn.Module):
         max_n_bins = max(n_bins)
 
         # Making weight2 and bias2 trainable can lead to *worse* performance.
-        self.register_buffer('weight', torch.zeros(n_features, max_n_bins))
-        self.register_buffer('bias', torch.zeros(n_features, max_n_bins))
+        self.register_buffer("weight", torch.zeros(n_features, max_n_bins))
+        self.register_buffer("bias", torch.zeros(n_features, max_n_bins))
 
         single_bin_mask = torch.tensor(n_bins) == 1
         self.register_buffer(
-            'single_bin_mask', single_bin_mask if single_bin_mask.any() else None
+            "single_bin_mask", single_bin_mask if single_bin_mask.any() else None
         )
 
         self.register_buffer(
-            'mask',
+            "mask",
             # The mask is needed if features have different number of bins.
             None
             if all(len(x) == len(bins[0]) for x in bins)
@@ -389,7 +391,7 @@ class CLSEmbedding(nn.Module):
 
     def forward(self, batch_dims: tuple[int]) -> Tensor:
         if not batch_dims:
-            raise ValueError('The input must be non-empty')
+            raise ValueError("The input must be non-empty")
 
         return self.weight.expand(*batch_dims, 1, -1)
 
@@ -478,12 +480,10 @@ class CategoricalEmbeddings1d(nn.Module):
         assert x.ndim >= 1
         tmp = []
         for i, m in enumerate(self.embeddings):
-            #print(x[..., i].max())
-            #print(m.weight.data.shape, flush=True)
+            # print(x[..., i].max())
+            # print(m.weight.data.shape, flush=True)
             tmp.append(m(x[..., i]))
-        return torch.stack(
-            tmp, dim=-2
-        )
+        return torch.stack(tmp, dim=-2)
 
 
 class ScaleEnsemble(nn.Module):
@@ -492,7 +492,7 @@ class ScaleEnsemble(nn.Module):
         k: int,
         d: int,
         *,
-        init: Literal['ones', 'normal', 'random-signs'],
+        init: Literal["ones", "normal", "random-signs"],
     ) -> None:
         super().__init__()
         self.weight = nn.Parameter(torch.empty(k, d))
@@ -500,14 +500,14 @@ class ScaleEnsemble(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self) -> None:
-        if self._weight_init == 'ones':
+        if self._weight_init == "ones":
             nn.init.ones_(self.weight)
-        elif self._weight_init == 'normal':
+        elif self._weight_init == "normal":
             nn.init.normal_(self.weight)
-        elif self._weight_init == 'random-signs':
+        elif self._weight_init == "random-signs":
             init_random_signs_(self.weight)
         else:
-            raise ValueError(f'Unknown weight_init: {self._weight_init}')
+            raise ValueError(f"Unknown weight_init: {self._weight_init}")
 
     def forward(self, x: Tensor) -> Tensor:
         assert x.ndim >= 2
@@ -522,7 +522,7 @@ class ElementwiseAffineEnsemble(nn.Module):
         *,
         weight: bool,
         bias: bool,
-        weight_init: Literal['ones', 'normal', 'random-signs'],
+        weight_init: Literal["ones", "normal", "random-signs"],
     ) -> None:
         assert weight or bias
         super().__init__()
@@ -533,14 +533,14 @@ class ElementwiseAffineEnsemble(nn.Module):
 
     def reset_parameters(self) -> None:
         if self.weight is not None:
-            if self._weight_init == 'ones':
+            if self._weight_init == "ones":
                 nn.init.ones_(self.weight)
-            elif self._weight_init == 'normal':
+            elif self._weight_init == "normal":
                 nn.init.normal_(self.weight)
-            elif self._weight_init == 'random-signs':
+            elif self._weight_init == "random-signs":
                 init_random_signs_(self.weight)
             else:
-                raise ValueError(f'Unknown weight_init: {self._weight_init}')
+                raise ValueError(f"Unknown weight_init: {self._weight_init}")
         if self.bias is not None:
             nn.init.zeros_(self.bias)
 
@@ -587,7 +587,7 @@ class LinearEfficientEnsemble(nn.Module):
         ensemble_scaling_in: bool,
         ensemble_scaling_out: bool,
         ensemble_bias: bool,
-        scaling_init: Literal['ones', 'random-signs'],
+        scaling_init: Literal["ones", "random-signs"],
     ):
         assert k > 0
         if ensemble_bias:
@@ -596,7 +596,7 @@ class LinearEfficientEnsemble(nn.Module):
 
         self.weight = nn.Parameter(torch.empty(out_features, in_features))
         self.register_parameter(
-            'r',
+            "r",
             (
                 nn.Parameter(torch.empty(k, in_features))
                 if ensemble_scaling_in
@@ -604,7 +604,7 @@ class LinearEfficientEnsemble(nn.Module):
             ),  # type: ignore[code]
         )
         self.register_parameter(
-            's',
+            "s",
             (
                 nn.Parameter(torch.empty(k, out_features))
                 if ensemble_scaling_out
@@ -612,7 +612,7 @@ class LinearEfficientEnsemble(nn.Module):
             ),  # type: ignore[code]
         )
         self.register_parameter(
-            'bias',
+            "bias",
             (
                 nn.Parameter(torch.empty(out_features))  # type: ignore[code]
                 if bias and not ensemble_bias
@@ -631,7 +631,7 @@ class LinearEfficientEnsemble(nn.Module):
 
     def reset_parameters(self):
         init_rsqrt_uniform_(self.weight, self.in_features)
-        scaling_init_fn = {'ones': nn.init.ones_, 'random-signs': init_random_signs_}[
+        scaling_init_fn = {"ones": nn.init.ones_, "random-signs": init_random_signs_}[
             self.scaling_init
         ]
         if self.r is not None:
@@ -694,7 +694,7 @@ class MLP(nn.Module):
         n_blocks: int,
         d_block: int,
         dropout: float,
-        activation: str = 'ReLU',
+        activation: str = "ReLU",
     ) -> None:
         super().__init__()
 
@@ -730,7 +730,7 @@ class ResNet(nn.Module):
         dropout: float,
         d_hidden_multiplier: float | int,
         n_linear_layers_per_block: int = 2,
-        activation: str = 'ReLU',
+        activation: str = "ReLU",
         normalization: str,
         first_normalization: bool,
     ) -> None:
@@ -741,7 +741,7 @@ class ResNet(nn.Module):
 
         Activation = getattr(nn, activation)
         Normalization = (
-            Identity if normalization == 'none' else getattr(nn, normalization)
+            Identity if normalization == "none" else getattr(nn, normalization)
         )
         d_hidden = int(d_block * d_hidden_multiplier)
 
@@ -832,7 +832,7 @@ class FTTransformerBackbone(nn.Module):
         # In the paper, FT-Transformer uses the ReGLU activation.
         # Here, to illustrate the difference, ReLU activation is also supported
         # (in particular, see the docstring).
-        ffn_activation: str = 'ReGLU',
+        ffn_activation: str = "ReGLU",
         residual_dropout: float,
         n_tokens: int | None = None,
         linformer_kv_compression_ratio: float | None = None,
@@ -870,56 +870,54 @@ class FTTransformerBackbone(nn.Module):
         if ffn_d_hidden is None:
             if ffn_d_hidden_multiplier is None:
                 raise ValueError(
-                    'If ffn_d_hidden is None,'
-                    ' then ffn_d_hidden_multiplier must not be None'
+                    "If ffn_d_hidden is None,"
+                    " then ffn_d_hidden_multiplier must not be None"
                 )
             ffn_d_hidden = int(d_block * cast(float, ffn_d_hidden_multiplier))
         else:
             if ffn_d_hidden_multiplier is not None:
                 raise ValueError(
-                    'If ffn_d_hidden is not None,'
-                    ' then ffn_d_hidden_multiplier must be None'
+                    "If ffn_d_hidden is not None,"
+                    " then ffn_d_hidden_multiplier must be None"
                 )
 
         super().__init__()
-        ffn_use_reglu = ffn_activation == 'ReGLU'
+        ffn_use_reglu = ffn_activation == "ReGLU"
         self.blocks = nn.ModuleList(
             [
                 nn.ModuleDict(
                     {
                         # >>> attention
-                        'attention': nn.MultiheadAttention(
+                        "attention": nn.MultiheadAttention(
                             embed_dim=d_block,
                             num_heads=attention_n_heads,
                             dropout=attention_dropout,
-                            batch_first=True
-                            # linformer_kv_compression_ratio=linformer_kv_compression_ratio,
-                            # linformer_kv_compression_sharing=linformer_kv_compression_sharing,
+                            batch_first=True,
                         ),
-                        'attention_residual_dropout': nn.Dropout(residual_dropout),
+                        "attention_residual_dropout": nn.Dropout(residual_dropout),
                         # >>> feed-forward
-                        'ffn_normalization': nn.LayerNorm(d_block),
-                        'ffn': _named_sequential(
+                        "ffn_normalization": nn.LayerNorm(d_block),
+                        "ffn": _named_sequential(
                             (
-                                'linear1',
+                                "linear1",
                                 # ReGLU divides dimension by 2,
                                 # so multiplying by 2 to compensate for this.
                                 nn.Linear(
                                     d_block, ffn_d_hidden * (2 if ffn_use_reglu else 1)
                                 ),
                             ),
-                            ('activation', _ReGLU() if ffn_use_reglu else nn.ReLU()),
-                            ('dropout', nn.Dropout(ffn_dropout)),
-                            ('linear2', nn.Linear(ffn_d_hidden, d_block)),
+                            ("activation", _ReGLU() if ffn_use_reglu else nn.ReLU()),  # noqa: F821 # type: ignore
+                            ("dropout", nn.Dropout(ffn_dropout)),
+                            ("linear2", nn.Linear(ffn_d_hidden, d_block)),
                         ),
-                        'ffn_residual_dropout': nn.Dropout(residual_dropout),
+                        "ffn_residual_dropout": nn.Dropout(residual_dropout),
                         # >>> output (for hook-based introspection)
-                        'output': nn.Identity(),
+                        "output": nn.Identity(),
                         # >>> the very first normalization
                         **(
                             {}
                             if layer_idx == 0
-                            else {'attention_normalization': nn.LayerNorm(d_block)}
+                            else {"attention_normalization": nn.LayerNorm(d_block)}
                         ),
                     }
                 )
@@ -930,9 +928,9 @@ class FTTransformerBackbone(nn.Module):
             None
             if d_out is None
             else _named_sequential(
-                ('normalization', nn.LayerNorm(d_block)),
-                ('activation', nn.ReLU()),
-                ('linear', nn.Linear(d_block, d_out)),
+                ("normalization", nn.LayerNorm(d_block)),
+                ("activation", nn.ReLU()),
+                ("linear", nn.Linear(d_block, d_out)),
             )
         )
 
@@ -940,34 +938,37 @@ class FTTransformerBackbone(nn.Module):
         """Do the forward pass."""
         if x.ndim != 3:
             raise ValueError(
-                f'The input must have exactly three dimension, however: {x.ndim=}'
+                f"The input must have exactly three dimension, however: {x.ndim=}"
             )
 
         n_blocks = len(self.blocks)
         for i_block, block in enumerate(self.blocks):
             block = cast(nn.ModuleDict, block)
-            print('here')
+            print("here")
 
             x_identity = x
-            if 'attention_normalization' in block:
-                x = block['attention_normalization'](x)
-            x, attn_weights = block['attention'](x[:, :1] if i_block + 1 == n_blocks else x, x, x)
-            x = block['attention_residual_dropout'](x)
+            if "attention_normalization" in block:
+                x = block["attention_normalization"](x)
+            x, attn_weights = block["attention"](
+                x[:, :1] if i_block + 1 == n_blocks else x, x, x
+            )
+            x = block["attention_residual_dropout"](x)
             x = x_identity + x
 
             x_identity = x
-            x = block['ffn_normalization'](x)
-            x = block['ffn'](x)
-            x = block['ffn_residual_dropout'](x)
+            x = block["ffn_normalization"](x)
+            x = block["ffn"](x)
+            x = block["ffn_residual_dropout"](x)
             x = x_identity + x
 
-            x = block['output'](x)
+            x = block["output"](x)
 
         x = x[:, 0]  # The representation of [CLS]-token.
 
         if self.output is not None:
             x = self.output(x)
         return x
+
 
 class PeriodicEmbeddingsV2(nn.Module):
     """Embeddings for continuous features based on periodic activations.
@@ -1026,21 +1027,23 @@ class PeriodicEmbeddingsV2(nn.Module):
                 See README for details.
         """
         super().__init__()
-        self.linear0 = (
-            LinearEmbeddings(n_features, d_embedding, bias=bias)
-        )
+        self.linear0 = LinearEmbeddings(n_features, d_embedding, bias=bias)
 
-        self.periodic = rtdl_num_embeddings._Periodic(n_features, n_frequencies, frequency_init_scale)
+        self.periodic = rtdl_num_embeddings._Periodic(
+            n_features, n_frequencies, frequency_init_scale
+        )
         self.linear: nn.Linear | rtdl_num_embeddings._NLinear
         if lite:
             # NOTE[DIFF]
             # The lite variation was introduced in a different paper
             # (about the TabR model).
             if not activation:
-                raise ValueError('lite=True is allowed only when activation=True')
+                raise ValueError("lite=True is allowed only when activation=True")
             self.linear = nn.Linear(2 * n_frequencies, d_embedding)
         else:
-            self.linear = rtdl_num_embeddings._NLinear(n_features, 2 * n_frequencies, d_embedding)
+            self.linear = rtdl_num_embeddings._NLinear(
+                n_features, 2 * n_frequencies, d_embedding
+            )
         nn.init.zeros_(self.linear.weight)
         self.activation = nn.ReLU() if activation else None
 
@@ -1080,9 +1083,9 @@ class LinearEmbeddings(nn.Module):
             d_embedding: the embedding size.
         """
         if n_features <= 0:
-            raise ValueError(f'n_features must be positive, however: {n_features=}')
+            raise ValueError(f"n_features must be positive, however: {n_features=}")
         if d_embedding <= 0:
-            raise ValueError(f'd_embedding must be positive, however: {d_embedding=}')
+            raise ValueError(f"d_embedding must be positive, however: {d_embedding=}")
 
         super().__init__()
         self.weight = Parameter(torch.empty(n_features, d_embedding))
@@ -1152,22 +1155,22 @@ def get_d_out(n_classes: None | int) -> int:
 
 @torch.inference_mode()
 def compute_parameter_stats(module: nn.Module) -> dict[str, dict[str, float]]:
-    stats = {'norm': {}, 'gradnorm': {}, 'gradratio': {}}
+    stats = {"norm": {}, "gradnorm": {}, "gradratio": {}}
     for name, parameter in module.named_parameters():
-        stats['norm'][name] = parameter.norm().item()
+        stats["norm"][name] = parameter.norm().item()
         if parameter.grad is not None:
-            stats['gradnorm'][name] = parameter.grad.norm().item()
+            stats["gradnorm"][name] = parameter.grad.norm().item()
             # Avoid computing statistics for zero-initialized parameters.
             if (parameter.abs() > 1e-6).any():
-                stats['gradratio'][name] = (
+                stats["gradratio"][name] = (
                     (parameter.grad.abs() / parameter.abs().clamp_min_(1e-6))
                     .mean()
                     .item()
                 )
-    stats['norm']['model'] = (
+    stats["norm"]["model"] = (
         torch.cat([x.flatten() for x in module.parameters()]).norm().item()
     )
-    stats['gradnorm']['model'] = (
+    stats["gradnorm"]["model"] = (
         torch.cat([x.grad.flatten() for x in module.parameters() if x.grad is not None])
         .norm()
         .item()
@@ -1185,7 +1188,7 @@ def default_zero_weight_decay_condition(
 
     del module_name, parameter
     return (
-        parameter_name.endswith('bias')
+        parameter_name.endswith("bias")
         or isinstance(
             module,
             nn.BatchNorm1d
@@ -1196,8 +1199,10 @@ def default_zero_weight_decay_condition(
             | rtdl_num_embeddings.LinearReLUEmbeddings
             | _Periodic,
         )
-        or isinstance(module, PiecewiseLinearEmbeddingsV3)
-        and parameter_name in ('weight1', 'bias1')
+        or (
+            isinstance(module, PiecewiseLinearEmbeddingsV3)
+            and parameter_name in ("weight1", "bias1")
+        )
     )
 
 
@@ -1209,27 +1214,33 @@ def make_parameter_groups(
     if custom_groups is None:
         custom_groups = []
     custom_params = frozenset(
-        itertools.chain.from_iterable(group['params'] for group in custom_groups)
+        itertools.chain.from_iterable(group["params"] for group in custom_groups)
     )
-    assert len(custom_params) == sum(
-        len(group['params']) for group in custom_groups
-    ), 'Parameters in custom_groups must not intersect'
-    zero_wd_params = frozenset(
-        p
-        for mn, m in module.named_modules()
-        for pn, p in m.named_parameters()
-        if p not in custom_params and zero_weight_decay_condition(mn, m, pn, p)
+    assert len(custom_params) == sum(len(group["params"]) for group in custom_groups), (
+        "Parameters in custom_groups must not intersect"
     )
+
+    # NOTE: We need deterministic order in zero_wd_params to load checkpoints.
+    #       So, using zero_wd_params_set as zero_wd_params can be bad.
+    zero_wd_params = []
+    zero_wd_params_set = set()
+    for mn, m in module.named_modules():
+        for pn, p in m.named_parameters():
+            if p not in custom_params and zero_weight_decay_condition(mn, m, pn, p):
+                if p not in zero_wd_params_set:
+                    zero_wd_params_set.add(p)
+                    zero_wd_params.append(p)
+
     default_group = {
-        'params': [
+        "params": [
             p
             for p in module.parameters()
-            if p not in custom_params and p not in zero_wd_params
+            if p not in custom_params and p not in zero_wd_params_set
         ]
     }
     return [
         default_group,
-        {'params': list(zero_wd_params), 'weight_decay': 0.0},
+        {"params": list(zero_wd_params), "weight_decay": 0.0},
         *custom_groups,
     ]
 
@@ -1240,11 +1251,10 @@ def make_optimizer(
     mechanic: bool = False,
     schedule_free: bool = False,
     **kwargs,
-) -> torch.optim.Optimizer:
-
-    if type == 'Shampoo':
+) -> torch.optim.Optimizer:  # type: ignore
+    if type == "Shampoo":
         assert sam is None
-        return DistributedShampoo(
+        return DistributedShampoo(  # type: ignore  # noqa: F821
             **kwargs,
             betas=(0.9, 0.999),
             beta3=-1.0,
@@ -1252,11 +1262,11 @@ def make_optimizer(
             max_preconditioner_dim=8192,
             precondition_frequency=100,
             use_decoupled_weight_decay=True,
-            grafting_config=AdamGraftingConfig(
+            grafting_config=AdamGraftingConfig(  # type: ignore  # noqa: F821
                 beta2=0.999,
-                epsilon=1e-12,            
+                epsilon=1e-12,
             ),
-            precision_config=PrecisionConfig(),
+            precision_config=PrecisionConfig(),  # type: ignore  # noqa: F821
         )
 
     Optimizer = getattr(torch.optim, type)
@@ -1264,19 +1274,46 @@ def make_optimizer(
     return (
         Optimizer(**kwargs)
         if sam is None
-        else SAM(kwargs.pop('params'), Optimizer, **kwargs, **sam)
+        else SAM(kwargs.pop("params"), Optimizer, **kwargs, **sam)  # type: ignore  # noqa: F821
     )
 
 
+def get_lr(optimizer: torch.optim.Optimizer) -> float:  # type: ignore
+    return next(iter(optimizer.param_groups))["lr"]
 
 
-def get_lr(optimizer: torch.optim.Optimizer) -> float:
-    return next(iter(optimizer.param_groups))['lr']
-
-
-def set_lr(optimizer: torch.optim.Optimizer, lr: float) -> None:
+def set_lr(optimizer: torch.optim.Optimizer, lr: float) -> None:  # type: ignore
     for group in optimizer.param_groups:
-        group['lr'] = lr
+        group["lr"] = lr
+
+
+def get_lr_scheduler(
+    optimizer: torch.optim.Optimizer,  # type: ignore
+    n_warmup_steps: int,
+    n_steps: int,
+    scheduler: Literal["none", "cosine"],
+) -> torch.optim.lr_scheduler.LRScheduler:
+    warmup_scheduler = torch.optim.lr_scheduler.LinearLR(
+        optimizer, start_factor=0.01, total_iters=n_warmup_steps
+    )
+    if scheduler == "cosine":
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, n_steps - n_warmup_steps
+        )
+    elif scheduler == "none":
+        lr_scheduler = torch.optim.lr_scheduler.ConstantLR(
+            optimizer, factor=1.0, total_iters=n_steps - n_warmup_steps
+        )
+    else:
+        raise NotImplementedError(f"Unknown scheduler {scheduler}")
+    return torch.optim.lr_scheduler.SequentialLR(
+        optimizer,
+        [
+            warmup_scheduler,
+            lr_scheduler,
+        ],
+        milestones=[n_warmup_steps],
+    )
 
 
 # ======================================================================================
@@ -1293,7 +1330,7 @@ def get_loss_fn(task_type: TaskType) -> Callable[..., Tensor]:
 
 
 def zero_grad_forward_backward(
-    optimizer: torch.optim.Optimizer,
+    optimizer: torch.optim.Optimizer,  # type: ignore
     step_fn: Callable[[Tensor], Tensor],  # step_fn: chunk_idx -> loss
     batch_idx: Tensor,
     chunk_size: int,
@@ -1337,5 +1374,47 @@ def zero_grad_forward_backward(
             break
 
     if not chunk_size:
-        raise RuntimeError('Not enough memory even for chunk_size=1')
+        raise RuntimeError("Not enough memory even for chunk_size=1")
     return cast(Tensor, loss), chunk_size
+
+
+# ======================================================================================
+# Gradient checkpointing
+# ======================================================================================
+def apply_dynamic_checkpointing(
+    module: nn.Module,
+    should_checkpoint_fn: Callable[..., bool],
+    submodule_filter_fn: Callable[[str, nn.Module], bool],
+    use_reentrant: bool = False,
+    verbose: bool = False,
+) -> None:
+    should_checkpoint_holder = [False]  # mutable holder for `should_checkpoint` flag
+
+    def check_should_checkpoint(_, args, kwargs):
+        should_checkpoint_holder[0] = should_checkpoint_fn(*args, **kwargs)
+        return args, kwargs
+
+    module.register_forward_pre_hook(check_should_checkpoint, with_kwargs=True)
+
+    def patch_submodule(submodule: nn.Module) -> None:
+        original_forward = submodule.forward
+        submodule.forward = lambda *args, **kwargs: (
+            torch.utils.checkpoint.checkpoint(
+                original_forward,
+                *args,
+                use_reentrant=use_reentrant,
+                **kwargs,
+            )
+            if should_checkpoint_holder[0] and torch.is_grad_enabled()
+            else original_forward(*args, **kwargs)
+        )
+
+    for name, submodule in module.named_modules():
+        if verbose:
+            logger.info(
+                f"Applying checkpoint: {submodule_filter_fn(name, submodule)!s:5} | "
+                f"{name} {submodule.__class__}"
+            )
+        if (submodule is module) or not submodule_filter_fn(name, submodule):
+            continue
+        patch_submodule(submodule)
